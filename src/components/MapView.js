@@ -1,4 +1,5 @@
 // src/components/MapView.js
+
 import React, { useEffect, useRef, useState } from 'react';
 import './MapView.css';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
@@ -9,11 +10,12 @@ import WebScene from '@arcgis/core/WebScene';
 import SceneView from '@arcgis/core/views/SceneView';
 
 const MapViewComponent = () => {
-  const mapContainerRef = useRef(null); // Reference to the container div
-  const view3DRef = useRef(null);       // Reference to the SceneView instance
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [viewsReady, setViewsReady] = useState(false);
+  const mapContainerRef = useRef(null);
+  const view3DRef = useRef(null);
+  const view2DRef = useRef(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true); // Ensure this is true
   const [is3DLoading, setIs3DLoading] = useState(true);
+  const [viewsReady, setViewsReady] = useState(false);
 
   // Initialize 3D Map
   useEffect(() => {
@@ -29,14 +31,14 @@ const MapViewComponent = () => {
       try {
         const scene = new WebScene({
           portalItem: {
-            id: '4304b6c3b2084330b4a2153da9fbbcf0' // Your WebScene ID
-          }
+            id: '4304b6c3b2084330b4a2153da9fbbcf0', // Your WebScene ID
+          },
         });
 
         const sceneView = new SceneView({
           container: container,
           map: scene,
-          ui: { components: [] } // Hide default UI components
+          ui: { components: [] }, // Hide default UI components
         });
 
         await sceneView.when();
@@ -67,11 +69,11 @@ const MapViewComponent = () => {
         view3DRef.current.destroy();
       }
       // Remove the container div
-      mapContainerRef.current.removeChild(container);
+      if (mapContainerRef.current && container) {
+        mapContainerRef.current.removeChild(container);
+      }
     };
-  }, []); // Empty dependency array
-
-  const view2DRef = useRef(null);
+  }, []);
 
   // Callback to receive view2D from Sidebar.js
   const handleView2D = (mapView) => {
@@ -102,7 +104,7 @@ const MapViewComponent = () => {
             .goTo({
               center: [longitude, latitude],
               zoom: zoom,
-              animate: false
+              animate: false,
             })
             .catch((error) => {
               console.error('Error in 2D goTo:', error);
@@ -130,7 +132,7 @@ const MapViewComponent = () => {
               zoom: zoom,
               tilt: tilt,
               heading: heading,
-              animate: false
+              animate: false,
             })
             .catch((error) => {
               console.error('Error in 3D goTo:', error);
@@ -154,10 +156,12 @@ const MapViewComponent = () => {
     }
   }, [viewsReady]);
 
-  // Toggle sidebar
+  // Toggle sidebar visibility
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded);
   };
+
+  console.log('isSidebarExpanded:', isSidebarExpanded);
 
   return (
     <div className="map-container">
@@ -170,7 +174,7 @@ const MapViewComponent = () => {
       </div>
 
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarExpanded ? 'expanded' : 'collapsed'}`}>
         <div className="sidebar-tab" onClick={toggleSidebar}>
           {isSidebarExpanded ? <FaChevronDown /> : <FaChevronUp />}
         </div>

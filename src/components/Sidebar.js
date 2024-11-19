@@ -22,8 +22,8 @@ const Sidebar = ({ onView2DInit, isVisible }) => {
     // Initialize WebMap (2D)
     const webMap = new WebMap({
       portalItem: {
-        id: '2e977a0d176b4bb582b9d4d643dfcc4d' // Your WebMap ID
-      }
+        id: '2e977a0d176b4bb582b9d4d643dfcc4d', // Your WebMap ID
+      },
     });
 
     // Initialize MapView for Sidebar
@@ -31,7 +31,7 @@ const Sidebar = ({ onView2DInit, isVisible }) => {
       container: container,
       map: webMap,
       ui: { components: [] }, // Hide default UI components
-      popup: { dockEnabled: false } // Disable popups
+      popup: { dockEnabled: false }, // Disable popups
     });
 
     mapViewInstanceRef.current = mapView;
@@ -47,6 +47,7 @@ const Sidebar = ({ onView2DInit, isVisible }) => {
       .catch((error) => {
         if (isMounted) {
           console.error('Error initializing 2D MapView:', error);
+          setIs2DLoading(false);
         }
       });
 
@@ -63,6 +64,8 @@ const Sidebar = ({ onView2DInit, isVisible }) => {
       }
     };
   }, []); // Empty dependency array
+
+  console.log('Sidebar isVisible:', isVisible);
 
   return (
     <div className={`sidebar-content ${isVisible ? '' : 'hidden'}`}>
