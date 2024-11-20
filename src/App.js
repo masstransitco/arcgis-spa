@@ -1,13 +1,11 @@
-// src/App.js
-
 import React from 'react';
 import './App.css';
-import MapViewComponent from './components/MapView';
+import MapView from './components/MapView';
 
 function App() {
   return (
     <div className="App">
-      <MapViewComponent />
+      <MapView />
     </div>
   );
 }

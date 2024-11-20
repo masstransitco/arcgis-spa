@@ -14,7 +14,6 @@ const MapViewComponent = () => {
   const mapContainerRef = useRef(null);
   const view3DRef = useRef(null);
   const view2DRef = useRef(null);
-  const cameraTargetRef = useRef(null); // Reference for the fixed camera target point
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [is3DLoading, setIs3DLoading] = useState(true);
   const [viewsReady, setViewsReady] = useState(false);
@@ -67,12 +66,6 @@ const MapViewComponent = () => {
           console.log('Applied Slide 1 to SceneView');
         }
 
-        // Set the fixed camera target to the initial camera position
-        cameraTargetRef.current = sceneView.camera.position.clone();
-
-        // Disable panning and zooming and set up custom rotation
-        disablePanningAndZooming(sceneView);
-
         if (isMounted) {
           view3DRef.current = sceneView;
           setIs3DLoading(false);
@@ -103,87 +96,6 @@ const MapViewComponent = () => {
       }
     };
   }, []);
-
-  // Function to disable panning and zooming and implement custom rotation
-  const disablePanningAndZooming = (sceneView) => {
-    // Disable default interactions
-    sceneView.on('drag', (event) => {
-      event.stopPropagation();
-    });
-
-    sceneView.on('mouse-wheel', (event) => {
-      event.stopPropagation();
-    });
-
-    sceneView.on('double-click', (event) => {
-      event.stopPropagation();
-    });
-
-    sceneView.on('key-down', (event) => {
-      const prohibitedKeys = ['+', '-', 'Shift', '_', '=', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-      if (prohibitedKeys.indexOf(event.key) !== -1) {
-        event.stopPropagation();
-      }
-    });
-
-    sceneView.on('pinch', (event) => {
-      event.stopPropagation();
-    });
-
-    // Implement custom rotation around fixed point
-    let isRotating = false;
-    let lastPoint = null;
-
-    sceneView.on('drag', (event) => {
-      event.stopPropagation();
-      if (event.action === 'start') {
-        isRotating = true;
-        lastPoint = { x: event.x, y: event.y };
-      } else if (event.action === 'update' && isRotating) {
-        const deltaX = event.x - lastPoint.x;
-        const deltaY = event.y - lastPoint.y;
-        lastPoint = { x: event.x, y: event.y };
-
-        const deltaHeading = -deltaX * 0.5; // Adjust rotation speed
-        const deltaTilt = deltaY * 0.5; // Adjust tilt speed
-
-        const camera = sceneView.camera.clone();
-        const newCamera = rotateCamera(camera, cameraTargetRef.current, deltaHeading, deltaTilt);
-
-        sceneView.camera = newCamera;
-      } else if (event.action === 'end') {
-        isRotating = false;
-      }
-    });
-  };
-
-  // Function to rotate camera around a fixed point
-  const rotateCamera = (camera, targetPoint, deltaHeading, deltaTilt) => {
-    const heading = camera.heading + deltaHeading;
-    const tilt = Math.min(Math.max(camera.tilt + deltaTilt, 0), 90);
-
-    const distance = camera.position.distance(targetPoint);
-
-    const newCamera = camera.clone();
-    newCamera.position = targetPoint.clone();
-
-    // Calculate new position using spherical coordinates
-    const radHeading = (heading * Math.PI) / 180;
-    const radTilt = (tilt * Math.PI) / 180;
-
-    const x = distance * Math.sin(radTilt) * Math.sin(radHeading);
-    const y = distance * Math.sin(radTilt) * Math.cos(radHeading);
-    const z = distance * Math.cos(radTilt);
-
-    newCamera.position.x += x;
-    newCamera.position.y += y;
-    newCamera.position.z += z;
-
-    newCamera.heading = heading;
-    newCamera.tilt = tilt;
-
-    return newCamera;
-  };
 
   // Callback to receive view2D from Sidebar.js
   const handleView2D = (mapView) => {
@@ -235,32 +147,35 @@ const MapViewComponent = () => {
       });
 
       // When 2D view changes, update 3D view
-      const handle2DViewChange = view2DRef.current.watch(['center', 'zoom'], () => {
-        if (syncing) return;
-        syncing = true;
-        const center = view2DRef.current.center;
-        const zoom = view2DRef.current.zoom;
-        const tilt = view3DRef.current.camera.tilt;
-        const heading = view3DRef.current.camera.heading;
+      const handle2DViewChange = view2DRef.current.watch(
+        ['center', 'zoom'],
+        () => {
+          if (syncing) return;
+          syncing = true;
+          const center = view2DRef.current.center;
+          const zoom = view2DRef.current.zoom;
+          const tilt = view3DRef.current.camera.tilt;
+          const heading = view3DRef.current.camera.heading;
 
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          view3DRef.current
-            .goTo({
-              center: center,
-              zoom: zoom,
-              tilt: tilt,
-              heading: heading,
-              animate: false,
-            })
-            .catch((error) => {
-              console.error('Error in 3D goTo:', error);
-            })
-            .finally(() => {
-              syncing = false;
-            });
-        }, 100);
-      });
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            view3DRef.current
+              .goTo({
+                center: center,
+                zoom: zoom,
+                tilt: tilt,
+                heading: heading,
+                animate: false,
+              })
+              .catch((error) => {
+                console.error('Error in 3D goTo:', error);
+              })
+              .finally(() => {
+                syncing = false;
+              });
+          }, 100);
+        }
+      );
 
       // Add click event handlers for feature selection
       const handle3DClick = view3DRef.current.on('click', (event) => {
@@ -314,8 +229,8 @@ const MapViewComponent = () => {
   const handleFeatureSelection = (graphic) => {
     // Check if the selected feature is "Yau Tsim Mong" in "District" layer
     if (
-      graphic.layer.title === 'District' && // Replace with your District layer title
-      graphic.attributes.Name === 'Yau Tsim Mong' // Replace with the correct attribute and value
+      graphic.layer.title === 'District' &&
+      graphic.attributes.Name === 'Yau Tsim Mong'
     ) {
       // Apply Slide "2"
       const slides = view3DRef.current.map.presentation.slides;
@@ -346,7 +261,7 @@ const MapViewComponent = () => {
 
     // Query the district geometry
     const districtQuery = districtLayer.createQuery();
-    districtQuery.where = `Name = '${districtName}'`; // Replace 'Name' with your attribute name
+    districtQuery.where = `Name = '${districtName}'`;
 
     const districtResult = await districtLayer.queryFeatures(districtQuery);
     if (districtResult.features.length > 0) {
@@ -361,9 +276,9 @@ const MapViewComponent = () => {
 
       if (stationsResult.features.length > 0) {
         // Zoom to the extent of the stations
-        let stationsExtent = stationsResult.features[0].geometry.extent.clone();
+        const stationsExtent = stationsResult.features[0].geometry.extent.clone();
         stationsResult.features.forEach((feature) => {
-          stationsExtent = stationsExtent.union(feature.geometry.extent);
+          stationsExtent.union(feature.geometry.extent);
         });
 
         await view2DRef.current.goTo(stationsExtent.expand(1.2)); // Adjust as needed
